@@ -542,10 +542,24 @@
         const age = Number(inp.dataset.age);
         const val = Number(inp.value);
         BENEFITS[age] = Number.isFinite(val) && val >= 0 ? val : 0;
-        // Only the annual-benefit cell in this row needs updating live; full re-render on change/blur.
-        renderAll();
+        // Patch this row's annual cell in place and re-render everything downstream, but
+        // skip rebuilding the benefit table itself — recreating <input> nodes on every
+        // keystroke (as renderAll()/renderBenefitTable() would) destroys the element the
+        // user is actively typing in and drops keyboard focus after one digit.
+        inp.closest('tr').children[3].textContent = fmtMoney(BENEFITS[age]*12);
+        renderDependents();
       });
     });
+  }
+
+  // Re-renders everything that depends on BENEFITS/BIRTH/TODAY/inflation except the
+  // benefit table's own <input> elements — safe to call on every keystroke.
+  function renderDependents(){
+    renderPickers();
+    renderMatrix();
+    renderCharts();
+    renderResult();
+    saveStored();
   }
 
   // breakeven age (in years, fractional) between claim age a (earlier) and b (later).
