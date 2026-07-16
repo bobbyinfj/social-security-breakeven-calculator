@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Social Security Breakeven</title>
+<script src="config.js"></script>
+<style>
+  :root{
+    --bg:#EEF1EF;
+    --paper:#F8FAF9;
+    --ink:#1B2926;
+    --ink-dim:#4B5C58;
+    --line:#CBD4D1;
+    --accent:#1C6E5E;
+    --accent-ink:#F8FAF9;
+    --gold:#9C7A3C;
+    --gold-bg:#F3ECDC;
+    --shadow:0 1px 2px rgba(27,41,38,0.06),0 6px 20px rgba(27,41,38,0.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0F1715;
+      --paper:#16211E;
+      --ink:#E6ECE9;
+      --ink-dim:#9BADA7;
+      --line:#2B3B37;
+      --accent:#4FD1A5;
+      --accent-ink:#0B1614;
+      --gold:#D9B36C;
+      --gold-bg:#2A2515;
+      --shadow:0 1px 2px rgba(0,0,0,0.3),0 6px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F1715;
+    --paper:#16211E;
+    --ink:#E6ECE9;
+    --ink-dim:#9BADA7;
+    --line:#2B3B37;
+    --accent:#4FD1A5;
+    --accent-ink:#0B1614;
+    --gold:#D9B36C;
+    --gold-bg:#2A2515;
+    --shadow:0 1px 2px rgba(0,0,0,0.3),0 6px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#EEF1EF;
+    --paper:#F8FAF9;
+    --ink:#1B2926;
+    --ink-dim:#4B5C58;
+    --line:#CBD4D1;
+    --accent:#1C6E5E;
+    --accent-ink:#F8FAF9;
+    --gold:#9C7A3C;
+    --gold-bg:#F3ECDC;
+    --shadow:0 1px 2px rgba(27,41,38,0.06),0 6px 20px rgba(27,41,38,0.05);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    line-height:1.5;
+    padding:2.5rem 1.25rem 4rem;
+  }
+  .page{
+    max-width:840px;
+    margin:0 auto;
+  }
+  header{
+    margin-bottom:2rem;
+  }
+  h1{
+    font-family:Iowan Old Style,Palatino Linotype,Georgia,"Times New Roman",serif;
+    font-weight:600;
+    font-size:2.1rem;
+    letter-spacing:-0.01em;
+    margin:0 0 0.35rem;
+    text-wrap:balance;
+  }
+  .sub{
+    color:var(--ink-dim);
+    font-size:0.98rem;
+    max-width:60ch;
+  }
+  .facts{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.5rem 1.5rem;
+    margin-top:1.1rem;
+    font-size:0.86rem;
+    color:var(--ink-dim);
+  }
+  .facts b{
+    color:var(--ink);
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+
+  section{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:var(--shadow);
+    padding:1.5rem 1.6rem;
+    margin-bottom:1.25rem;
+  }
+  h2{
+    font-family:Iowan Old Style,Palatino Linotype,Georgia,serif;
+    font-size:1.05rem;
+    font-weight:600;
+    margin:0 0 1rem;
+    letter-spacing:-0.005em;
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-size:0.68rem;
+    color:var(--accent);
+    font-weight:700;
+    margin:0 0 0.3rem;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.88rem;
+  }
+  th,td{
+    text-align:right;
+    padding:0.5rem 0.6rem;
+    border-bottom:1px solid var(--line);
+    font-variant-numeric:tabular-nums;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  th:first-child,td:first-child{
+    text-align:left;
+    font-family:inherit;
+  }
+  thead th{
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    text-transform:uppercase;
+    font-size:0.68rem;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+    font-weight:600;
+    border-bottom:1px solid var(--ink-dim);
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  .tablewrap{overflow-x:auto;}
+
+  .picker{
+    display:flex;
+    gap:1rem;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    margin-bottom:1.1rem;
+  }
+  .field{display:flex;flex-direction:column;gap:0.3rem;}
+  label{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+    font-weight:600;
+  }
+  select, input[type="date"], input[type="number"]{
+    font:inherit;
+    font-size:0.95rem;
+    padding:0.45rem 0.6rem;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--bg);
+    color:var(--ink);
+  }
+  input[type="number"]{
+    width:6.5rem;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  select:focus-visible, input:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  button{
+    font:inherit;
+    font-size:0.85rem;
+    font-weight:600;
+    padding:0.5rem 0.9rem;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--bg);
+    color:var(--ink-dim);
+    cursor:pointer;
+  }
+  button:hover{color:var(--ink);border-color:var(--ink-dim);}
+
+  .result{
+    display:flex;
+    gap:1rem;
+    align-items:center;
+    background:var(--gold-bg);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    padding:0.9rem 1.1rem;
+  }
+  .result .num{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:1.6rem;
+    font-weight:600;
+    color:var(--gold);
+    white-space:nowrap;
+  }
+  .result p{margin:0;font-size:0.88rem;color:var(--ink-dim);}
+  .result p b{color:var(--ink);}
+
+  .result-pair{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1rem;
+  }
+  .result-pair .result{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:0.35rem;
+  }
+  .result-pair .num{font-size:1.5rem;}
+  .reslabel{
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:0.68rem;
+    font-weight:700;
+    color:var(--gold);
+    margin:0;
+  }
+  .reslabel span{opacity:0.65;font-weight:600;}
+  @media (max-width:560px){
+    .result-pair{grid-template-columns:1fr;}
+  }
+
+  canvas{
+    width:100%;
+    height:260px;
+    display:block;
+  }
+  .chart-head{
+    display:flex;
+    align-items:flex-end;
+    gap:1rem;
+    flex-wrap:wrap;
+    margin-bottom:0.9rem;
+  }
+  .chartlabel{
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:0.7rem;
+    color:var(--ink-dim);
+    font-weight:600;
+    margin:0 0 0.5rem;
+  }
+  .chartlabel span{
+    text-transform:none;
+    letter-spacing:normal;
+    font-weight:400;
+  }
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.7rem 1.1rem;
+    margin-top:0.9rem;
+    font-size:0.8rem;
+    color:var(--ink-dim);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:0.4rem;}
+  .swatch{width:10px;height:10px;border-radius:2px;flex:none;}
+
+  .matrix td.hi{color:var(--gold);font-weight:600;}
+
+  .heatkey{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.4rem;
+    align-items:center;
+    font-size:0.78rem;
+    color:var(--ink-dim);
+    margin:0 0 0.9rem;
+  }
+  .chip{
+    padding:0.12rem 0.5rem;
+    border-radius:4px;
+    color:var(--ink);
+    font-weight:600;
+    font-size:0.72rem;
+  }
+  .chip.lo{background:hsla(0,70%,45%,0.30);}
+  .chip.mid{background:hsla(60,70%,45%,0.30);}
+  .chip.hi{background:hsla(120,70%,45%,0.30);}
+
+  .numgrid th, .numgrid td{font-size:0.8rem;padding:0.4rem 0.55rem;white-space:nowrap;}
+  .numgrid th:first-child, .numgrid td:first-child{
+    position:sticky;
+    left:0;
+    background:var(--paper);
+    text-align:center;
+    z-index:1;
+  }
+  .numgrid thead th:first-child{z-index:2;}
+  .numgrid thead th{background:var(--paper);}
+  .disclaimer{
+    font-size:0.85rem;
+    color:var(--ink-dim);
+    background:var(--gold-bg);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    padding:0.9rem 1.1rem;
+    margin-bottom:1.25rem;
+  }
+  .disclaimer b{color:var(--ink);}
+  footer{
+    text-align:center;
+    font-size:0.78rem;
+    color:var(--ink-dim);
+    margin-top:1.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="eyebrow">Retirement planning</p>
+    <h1>Social Security claiming breakeven</h1>
+    <p class="sub">Compares cumulative benefits across claiming ages so you can see when an earlier, smaller check is overtaken by a later, larger one.</p>
+    <div class="facts">
+      <span>Birth date: <b id="birthFact"></b></span>
+      <span>As of: <b id="todayFact"></b></span>
+      <span>Current age: <b id="curAge"></b></span>
+    </div>
+  </header>
+
+  <div class="disclaimer">
+    <b>This is a rough personal tool, not financial advice.</b> It assumes flat benefits
+    (no COLA), payments starting the month of the claim age, and it has <b>no mortality or
+    life-expectancy modeling at all</b> &mdash; the &ldquo;best&rdquo; age depends heavily on
+    how long you assume you'll live and on the inflation rate you pick below. Different
+    assumptions can point to very different ages. Use it to build intuition, not as an answer.
+  </div>
+
+  <section>
+    <p class="eyebrow">Your numbers</p>
+    <h2>Birth date, as-of date &amp; benefit estimates</h2>
+    <div class="picker">
+      <div class="field">
+        <label for="birthInput">Birth date</label>
+        <input type="date" id="birthInput">
+      </div>
+      <div class="field">
+        <label for="asOfInput">As of (calendar date)</label>
+        <input type="date" id="asOfInput">
+      </div>
+      <div class="field">
+        <label for="inflation">Inflation assumption</label>
+        <select id="inflation"></select>
+      </div>
+      <button id="resetBtn" type="button">Reset to defaults</button>
+    </div>
+    <div class="tablewrap">
+      <table id="benefitTable">
+        <thead><tr><th>Claim age</th><th>Claim date</th><th>Monthly benefit</th><th>Annual benefit</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="sub" style="margin-top:0.7rem;font-size:0.8rem;">Edit the monthly benefit for any claim age to match your own Social Security estimate (see your <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener">my Social Security</a> statement). Values are saved in your browser only &mdash; nothing is sent anywhere.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Compare two ages</p>
+    <h2>When does the later age catch up?</h2>
+    <div class="picker">
+      <div class="field">
+        <label for="ageA">Earlier claim</label>
+        <select id="ageA"></select>
+      </div>
+      <div class="field">
+        <label for="ageB">Later claim</label>
+        <select id="ageB"></select>
+      </div>
+    </div>
+    <div class="result-pair" id="resultPair"></div>
+    <p class="sub" style="margin-top:0.7rem;font-size:0.8rem;">Real breakeven uses the inflation rate set above.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Visual</p>
+    <div class="chart-head">
+      <h2 style="margin-bottom:0.15rem;">Cumulative benefits received, by age</h2>
+    </div>
+
+    <p class="chartlabel">Nominal dollars</p>
+    <canvas id="chartNominal"></canvas>
+    <div class="legend" id="legendNominal"></div>
+
+    <p class="chartlabel" style="margin-top:1.6rem;">Real dollars <span id="realNote"></span></p>
+    <canvas id="chartReal"></canvas>
+    <div class="legend" id="legendReal"></div>
+  </section>
+
+  <section>
+    <p class="eyebrow">All the numbers</p>
+    <h2>Cumulative total collected &mdash; nominal dollars</h2>
+    <p class="sub" style="margin-bottom:0.7rem;">Rows are the age you start Social Security; columns are the age you reach. Each cell is the running total of benefits paid out by then. Scroll right for later ages.</p>
+    <p class="heatkey"><span class="chip lo">lowest that year</span><span class="chip mid">middle</span><span class="chip hi">highest that year</span> &mdash; colored down each column</p>
+    <div class="tablewrap">
+      <table class="matrix numgrid" id="tableNominal"></table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">All the numbers</p>
+    <h2>Cumulative total collected &mdash; real dollars <span id="realNoteTable" style="font-weight:400;font-size:0.85rem;color:var(--ink-dim);"></span></h2>
+    <p class="sub" style="margin-bottom:0.7rem;">The same running totals, restated in today's purchasing power at the inflation rate selected above.</p>
+    <p class="heatkey"><span class="chip lo">lowest that year</span><span class="chip mid">middle</span><span class="chip hi">highest that year</span> &mdash; colored down each column</p>
+    <div class="tablewrap">
+      <table class="matrix numgrid" id="tableReal"></table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">All the numbers</p>
+    <h2>Gap behind the leader &mdash; real dollars <span id="realNoteGap" style="font-weight:400;font-size:0.85rem;color:var(--ink-dim);"></span></h2>
+    <p class="sub" style="margin-bottom:0.7rem;">For each age reached, how far behind the best strategy that year each start age is, in today's dollars. The leader is <b>$0</b> (green); everyone else is negative.</p>
+    <p class="heatkey"><span class="chip hi">leader ($0)</span><span class="chip mid">middle</span><span class="chip lo">furthest behind</span> &mdash; colored down each column</p>
+    <div class="tablewrap">
+      <table class="matrix numgrid" id="tableGap"></table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Reference</p>
+    <h2>Breakeven age for every pair</h2>
+    <p class="sub" style="margin-bottom:0.9rem;">Row = earlier claim, column = later claim. Cell is the age at which the later age's total catches up.</p>
+    <div class="tablewrap">
+      <table class="matrix" id="matrixTable"></table>
+    </div>
+  </section>
+
+  <footer>Assumes benefit amounts stay flat (no COLA) and payments start the month of the claim age. Not financial advice &mdash; <a href="https://github.com/bobbyinfj/social-security-breakeven-calculator" target="_blank" rel="noopener">source on GitHub</a>.</footer>
+</div>
+
+<script>
+  // ---- Config: built-in generic defaults, overridable by an optional gitignored
+  // config.js (window.RETIREMENT_DEFAULTS), overridable by localStorage (your last edits).
+  // The published site ships ONLY the generic defaults below — real personal data, if any,
+  // lives solely in a local, gitignored config.js and never gets committed.
+  const BUILTIN_DEFAULTS = {
+    birthDate: "1960-01-01",
+    benefits: { 62:1400, 64:1600, 66:1900, 67:2000, 68:2160, 70:2480 },
+    inflationOptions: [0, 0.02, 0.025, 0.03, 0.04],
+    inflationDefault: 0.025,
+  };
+  const fileConfig = (typeof window !== 'undefined' && window.RETIREMENT_DEFAULTS) || {};
+  const CONFIG = Object.assign({}, BUILTIN_DEFAULTS, fileConfig);
+
+  const STORAGE_KEY = 'ssBreakeven.v1';
+  function loadStored(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveStored(){
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        birthDate: fmtISO(BIRTH),
+        benefits: BENEFITS,
+        inflation: currentInflation,
+      }));
+    } catch(e){ /* ignore quota/private-mode errors */ }
+  }
+
+  function fmtISO(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function parseISO(s){
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+
+  // ---- Mutable state (was: hardcoded consts) ----
+  let BIRTH, TODAY, BENEFITS, AGES, currentInflation;
+  const COLORS = ['#1C6E5E','#3E8F73','#6AA98A','#9C7A3C','#B4924F','#C7A968','#8A5A9E'];
+
+  function initState(){
+    const stored = loadStored();
+    BIRTH = parseISO(stored.birthDate || CONFIG.birthDate);
+    // As-of date intentionally NOT restored from storage — it always defaults to
+    // today's actual date on load, per the tool's purpose (compare "as of right now").
+    TODAY = new Date();
+    BENEFITS = Object.assign({}, CONFIG.benefits, stored.benefits || {});
+    AGES = Object.keys(BENEFITS).map(Number).sort((a,b)=>a-b);
+    currentInflation = (stored.inflation !== undefined) ? stored.inflation : CONFIG.inflationDefault;
+  }
+  initState();
+
+  function claimDate(age){
+    return new Date(BIRTH.getFullYear()+age, BIRTH.getMonth(), BIRTH.getDate());
+  }
+  function fmtDate(d){
+    return d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  }
+  function fmtMoney(n){
+    return '$'+n.toLocaleString('en-US',{maximumFractionDigits:0});
+  }
+
+  let AGE_TODAY = 0;
+
+  function renderHeader(){
+    let years = TODAY.getFullYear() - BIRTH.getFullYear();
+    let months = TODAY.getMonth() - BIRTH.getMonth();
+    if (TODAY.getDate() < BIRTH.getDate()) months--;
+    if (months < 0){ years--; months += 12; }
+    document.getElementById('curAge').textContent = years + ' yrs, ' + months + ' mo';
+    document.getElementById('birthFact').textContent = fmtDate(BIRTH);
+    document.getElementById('todayFact').textContent = fmtDate(TODAY);
+    AGE_TODAY = (TODAY - BIRTH) / (365.2425*24*3600*1000);
+  }
+
+  function renderBenefitTable(){
+    const tbody = document.querySelector('#benefitTable tbody');
+    tbody.innerHTML = '';
+    AGES.forEach(age=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${age}</td><td>${fmtDate(claimDate(age))}</td>`+
+        `<td><input type="number" min="0" step="1" class="benefitInput" data-age="${age}" value="${BENEFITS[age]}"></td>`+
+        `<td>${fmtMoney(BENEFITS[age]*12)}</td>`;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.benefitInput').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const age = Number(inp.dataset.age);
+        const val = Number(inp.value);
+        BENEFITS[age] = Number.isFinite(val) && val >= 0 ? val : 0;
+        // Only the annual-benefit cell in this row needs updating live; full re-render on change/blur.
+        renderAll();
+      });
+    });
+  }
+
+  // breakeven age (in years, fractional) between claim age a (earlier) and b (later).
+  // Guards: if the benefits are equal there's no crossover (parallel lines, never catches up
+  // except by tying); if benefits are non-monotonic (later age pays less — a data-entry
+  // mistake, since real SS benefits only rise with a later claim) the naive formula can
+  // produce a negative or nonsensical age, so we detect and flag it instead of rendering
+  // Infinity/NaN/garbage.
+  function breakeven(a,b){
+    const ba = BENEFITS[a], bb = BENEFITS[b];
+    if (bb === ba) return null; // no crossover: identical monthly benefit, running totals never diverge
+    if (bb < ba) return NaN;    // non-monotonic input: later age pays less, flag as invalid
+    return (bb*b - ba*a) / (bb - ba);
+  }
+  function breakevenDate(a,b){
+    const years = breakeven(a,b);
+    if (years === null) return {age:null, label:'same'};
+    if (Number.isNaN(years)) return {age:NaN, label:'n/a'};
+    const wholeYears = Math.floor(years);
+    const fracMonths = Math.round((years - wholeYears)*12);
+    return {age: years, label: wholeYears + 'y ' + fracMonths + 'm'};
+  }
+
+  const selA = document.getElementById('ageA');
+  const selB = document.getElementById('ageB');
+
+  function renderPickers(){
+    const prevA = selA.value, prevB = selB.value;
+    selA.innerHTML = ''; selB.innerHTML = '';
+    AGES.forEach(age=>{
+      selA.add(new Option(age + ' ('+fmtMoney(BENEFITS[age])+'/mo)', age));
+      selB.add(new Option(age + ' ('+fmtMoney(BENEFITS[age])+'/mo)', age));
+    });
+    const hasPrevA = AGES.includes(Number(prevA));
+    const hasPrevB = AGES.includes(Number(prevB));
+    selA.value = hasPrevA ? prevA : AGES[0];
+    selB.value = hasPrevB ? prevB : AGES[AGES.length-1];
+  }
+
+  function renderInflationOptions(){
+    const sel = document.getElementById('inflation');
+    const prev = sel.value !== '' ? Number(sel.value) : currentInflation;
+    sel.innerHTML = CONFIG.inflationOptions.map(r=>{
+      const pct = (r*100).toFixed(1);
+      const label = r === 0 ? '0% (nominal only)' : pct + '% / yr';
+      return `<option value="${r}">${label}</option>`;
+    }).join('');
+    const toSelect = CONFIG.inflationOptions.includes(prev) ? prev : CONFIG.inflationDefault;
+    sel.value = String(toSelect);
+    currentInflation = toSelect;
+  }
+
+  function fmtAge(years){
+    let w = Math.floor(years), m = Math.round((years - w)*12);
+    if (m === 12){ w++; m = 0; }
+    return w + 'y ' + m + 'm';
+  }
+  function ageToDate(years){
+    return new Date(BIRTH.getFullYear()+Math.floor(years), BIRTH.getMonth()+Math.round((years%1)*12), BIRTH.getDate());
+  }
+  // numeric real-dollar breakeven: first age where the later claim's discounted total overtakes the earlier one.
+  // returns null if it never happens within the horizon (inflation can erode the later checks faster than they catch up).
+  function realBreakevenAge(lo, hi, infl){
+    for (let age = hi; age <= 105; age += 1/12){
+      if (cumulativeAt(hi, age, true, infl) >= cumulativeAt(lo, age, true, infl)) return age;
+    }
+    return null;
+  }
+  function resultBox(label, num, caption){
+    return `<div class="result"><p class="reslabel">${label}</p><div class="num">${num}</div><p>${caption}</p></div>`;
+  }
+
+  function renderResult(){
+    const a = Number(selA.value), b = Number(selB.value);
+    const pair = document.getElementById('resultPair');
+    if (a === b){
+      pair.innerHTML = `<div class="result"><p>Pick two different ages to compare.</p></div>`;
+      return;
+    }
+    const lo = Math.min(a,b), hi = Math.max(a,b);
+    const infl = currentInflation;
+
+    // nominal (closed form)
+    const beN = breakevenDate(lo,hi);
+    let nBox;
+    if (beN.age === null){
+      nBox = resultBox('Nominal dollars', 'same', `Claiming at <b>${lo}</b> and <b>${hi}</b> pay the same monthly benefit (${fmtMoney(BENEFITS[lo])}/mo) &mdash; there's no crossover to compute.`);
+    } else if (Number.isNaN(beN.age)){
+      nBox = resultBox('Nominal dollars', 'n/a', `Claiming later at age <b>${hi}</b> pays <i>less</i> per month (${fmtMoney(BENEFITS[hi])}) than claiming at <b>${lo}</b> (${fmtMoney(BENEFITS[lo])}) &mdash; check your entered benefit values, since Social Security benefits normally increase the later you claim.`);
+    } else {
+      nBox = resultBox(
+        'Nominal dollars',
+        beN.label,
+        `Claiming at <b>${hi}</b> (${fmtMoney(BENEFITS[hi])}/mo) passes claiming at <b>${lo}</b> (${fmtMoney(BENEFITS[lo])}/mo) around <b>${fmtDate(ageToDate(beN.age))}</b>.`
+      );
+    }
+
+    // real (numeric, inflation-discounted)
+    let rBox;
+    const inflPct = (infl*100).toFixed(1);
+    if (beN.age === null || Number.isNaN(beN.age)){
+      rBox = resultBox('Real dollars <span>'+inflPct+'%/yr</span>', beN.label, `Same caveat applies in real dollars.`);
+    } else if (infl === 0){
+      rBox = resultBox('Real dollars <span>0%/yr</span>', beN.label, `Identical to nominal when inflation is 0%.`);
+    } else {
+      const beR = realBreakevenAge(lo, hi, infl);
+      if (beR === null){
+        rBox = resultBox('Real dollars <span>'+inflPct+'%/yr</span>', 'never',
+          `In today's dollars, claiming at <b>${hi}</b> never catches up to <b>${lo}</b> by age 105 — inflation erodes the larger later checks faster than they gain ground.`);
+      } else {
+        rBox = resultBox('Real dollars <span>'+inflPct+'%/yr</span>', fmtAge(beR),
+          `Discounting to today's dollars pushes the catch-up out to around <b>${fmtDate(ageToDate(beR))}</b>.`);
+      }
+    }
+    pair.innerHTML = nBox + rBox;
+  }
+  selA.addEventListener('change', ()=>{renderCharts(); renderResult();});
+  selB.addEventListener('change', ()=>{renderCharts(); renderResult();});
+
+  function renderMatrix(){
+    const table = document.getElementById('matrixTable');
+    let thead = '<thead><tr><th></th>' + AGES.map(a=>`<th>${a}</th>`).join('') + '</tr></thead>';
+    let rows = AGES.map(a=>{
+      let cells = AGES.map(b=>{
+        if (a>=b) return '<td>&mdash;</td>';
+        return `<td>${breakevenDate(a,b).label}</td>`;
+      }).join('');
+      return `<tr><th>${a}</th>${cells}</tr>`;
+    }).join('');
+    table.innerHTML = thead + '<tbody>' + rows + '</tbody>';
+  }
+
+  // cumulative benefit series for a claim age, sampled every 0.5 yrs of age from minAge to maxAge.
+  // real=true deflates each increment of benefit to today's (AGE_TODAY) purchasing power
+  // using the chosen annual inflation rate, so past and future dollars are comparable.
+  const STEP = 0.5;
+  function ageRange(){
+    const minAge = AGES[0];
+    const maxAge = Math.max(90, AGES[AGES.length-1]);
+    return {minAge, maxAge};
+  }
+  function buildSeries(claimAge, real, infl){
+    const {minAge, maxAge} = ageRange();
+    const pts = [];
+    let cum = 0;
+    let prevAge = claimAge;
+    for (let age = minAge; age <= maxAge; age = Math.round((age+STEP)*100)/100){
+      if (age > prevAge && age > claimAge){
+        const from = Math.max(prevAge, claimAge);
+        const yearsFrac = age - from;
+        const annualNominal = BENEFITS[claimAge]*12;
+        if (!real || infl === 0){
+          cum += annualNominal*yearsFrac;
+        } else {
+          // integrate annualNominal / (1+infl)^(t-AGE_TODAY) dt over [from,age]
+          const k = Math.log(1+infl);
+          const disc = t => Math.pow(1+infl, -(t-AGE_TODAY));
+          cum += annualNominal * (disc(from) - disc(age)) / k;
+        }
+      }
+      pts.push({age, val: age < claimAge ? 0 : cum});
+      prevAge = age;
+    }
+    return pts;
+  }
+
+  function drawChart(canvasId, legendId, real){
+    const canvas = document.getElementById(canvasId);
+    const infl = currentInflation;
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 760, cssH = 260;
+    canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    const styles = getComputedStyle(document.documentElement);
+    const inkDim = styles.getPropertyValue('--ink-dim').trim();
+    const line = styles.getPropertyValue('--line').trim();
+
+    const {minAge, maxAge} = ageRange();
+    const series = AGES.map(a => buildSeries(a, real, infl));
+    const maxTotal = Math.max(...series.map(s => s[s.length-1].val)) * 1.05 || 1;
+
+    const padL = 46, padR = 12, padT = 12, padB = 26;
+    const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+    const x = age => padL + (age-minAge)/(maxAge-minAge)*plotW;
+    const y = val => padT + plotH - (val/maxTotal)*plotH;
+
+    ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.font = '11px -apple-system,sans-serif'; ctx.fillStyle = inkDim;
+    const gridStep = Math.max(5, Math.round((maxAge-minAge)/6/5)*5);
+    for (let age=minAge; age<=maxAge; age+=gridStep){
+      ctx.beginPath(); ctx.moveTo(x(age),padT); ctx.lineTo(x(age),padT+plotH); ctx.stroke();
+      ctx.textAlign='center'; ctx.fillText(Math.round(age), x(age), cssH-8);
+    }
+    for (let i=0;i<=4;i++){
+      const val = maxTotal*i/4;
+      ctx.beginPath(); ctx.moveTo(padL,y(val)); ctx.lineTo(padL+plotW,y(val)); ctx.stroke();
+      ctx.textAlign='right'; ctx.fillText('$'+Math.round(val/1000)+'k', padL-8, y(val)+3);
+    }
+
+    const selectedA = Number(selA.value), selectedB = Number(selB.value);
+    AGES.forEach((claimAge,i)=>{
+      const active = claimAge===selectedA || claimAge===selectedB;
+      ctx.beginPath();
+      ctx.lineWidth = active ? 2.5 : 1.3;
+      ctx.strokeStyle = COLORS[i%COLORS.length];
+      ctx.globalAlpha = active ? 1 : 0.35;
+      series[i].forEach((p,idx)=>{
+        const px=x(p.age), py=y(p.val);
+        if (idx===0){ctx.moveTo(px,py);} else {ctx.lineTo(px,py);}
+      });
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+
+    const legend = document.getElementById(legendId);
+    legend.innerHTML = AGES.map((a,i)=>`<span><span class="swatch" style="background:${COLORS[i%COLORS.length]}"></span>Age ${a}</span>`).join('');
+  }
+
+  // cumulative dollars collected by claimAge from claim through atAge.
+  // real=true expresses the total in today's (AGE_TODAY) dollars at the given inflation rate.
+  function cumulativeAt(claimAge, atAge, real, infl){
+    if (atAge <= claimAge) return 0;
+    const annualNominal = BENEFITS[claimAge]*12;
+    if (!real || infl === 0) return annualNominal * (atAge - claimAge);
+    const disc = t => Math.pow(1+infl, -(t-AGE_TODAY));
+    const k = Math.log(1+infl);
+    return annualNominal * (disc(claimAge) - disc(atAge)) / k;
+  }
+
+  // red (lowest) -> yellow -> green (highest); tint over the cell so text stays legible in both themes
+  function heatColor(t){
+    const hue = t*120; // 0 = red, 60 = yellow, 120 = green
+    return `hsla(${hue}, 70%, 45%, 0.30)`;
+  }
+
+  // raw-numbers table: rows = claim (start) age, columns = age reached, cell = cumulative total collected.
+  // each column is colored independently: highest total that year is green, lowest red, middle yellow.
+  function tableAgeRange(){
+    const minAge = Math.min(65, AGES[0]);
+    const maxAge = Math.max(100, AGES[AGES.length-1] + 30);
+    return {minAge, maxAge};
+  }
+  function renderTable(tableId, real, infl){
+    const table = document.getElementById(tableId);
+    const {minAge: TABLE_MIN, maxAge: TABLE_MAX} = tableAgeRange();
+    const cols = [];
+    for (let age = TABLE_MIN; age <= TABLE_MAX; age++) cols.push(age);
+
+    // values[colIndex] = {claimAge: total} for started strategies
+    const colStats = cols.map(age => {
+      const vals = AGES.filter(c => age >= c).map(c => cumulativeAt(c, age, real, infl));
+      return {min: Math.min(...vals), max: Math.max(...vals)};
+    });
+
+    const thead = '<thead><tr><th>Start age</th>' + cols.map(a=>`<th>${a}</th>`).join('') + '</tr></thead>';
+    const rows = AGES.map(claimAge=>{
+      const cells = cols.map((age,ci) => {
+        if (age < claimAge) return '<td>&mdash;</td>';
+        const val = cumulativeAt(claimAge, age, real, infl);
+        const {min,max} = colStats[ci];
+        const t = max > min ? (val - min)/(max - min) : 0.5;
+        return `<td style="background:${heatColor(t)}">${fmtMoney(Math.round(val))}</td>`;
+      }).join('');
+      return `<tr><th>${claimAge}</th>${cells}</tr>`;
+    }).join('');
+    table.innerHTML = thead + '<tbody>' + rows + '</tbody>';
+  }
+
+  // gap table (real dollars): each cell = how far behind that column's leader, i.e. value - column max.
+  // leader is 0 (green); the furthest-behind is red.
+  function renderGapTable(infl){
+    const table = document.getElementById('tableGap');
+    const {minAge: TABLE_MIN, maxAge: TABLE_MAX} = tableAgeRange();
+    const cols = [];
+    for (let age = TABLE_MIN; age <= TABLE_MAX; age++) cols.push(age);
+
+    const colStats = cols.map(age => {
+      const vals = AGES.filter(c => age >= c).map(c => cumulativeAt(c, age, true, infl));
+      const max = Math.max(...vals);
+      const minGap = Math.min(...vals) - max; // most-negative gap
+      return {max, minGap};
+    });
+
+    const thead = '<thead><tr><th>Start age</th>' + cols.map(a=>`<th>${a}</th>`).join('') + '</tr></thead>';
+    const rows = AGES.map(claimAge=>{
+      const cells = cols.map((age,ci) => {
+        if (age < claimAge) return '<td>&mdash;</td>';
+        const {max,minGap} = colStats[ci];
+        const gap = cumulativeAt(claimAge, age, true, infl) - max; // <= 0
+        const t = minGap < 0 ? (gap - minGap)/(0 - minGap) : 1; // 0 (red) .. 1 (green=leader)
+        const txt = gap >= -0.5 ? 'leader' : '−'+fmtMoney(Math.round(-gap));
+        return `<td style="background:${heatColor(t)}">${txt}</td>`;
+      }).join('');
+      return `<tr><th>${claimAge}</th>${cells}</tr>`;
+    }).join('');
+    table.innerHTML = thead + '<tbody>' + rows + '</tbody>';
+  }
+
+  function renderCharts(){
+    const infl = currentInflation;
+    const note = infl === 0 ? '' : `(today's dollars, ${(infl*100).toFixed(1)}%/yr inflation)`;
+    document.getElementById('realNote').textContent = note;
+    document.getElementById('realNoteTable').textContent = note;
+    document.getElementById('realNoteGap').textContent = note;
+    drawChart('chartNominal','legendNominal', false);
+    drawChart('chartReal','legendReal', true);
+    renderTable('tableNominal', false, infl);
+    renderTable('tableReal', true, infl);
+    renderGapTable(infl);
+  }
+
+  function renderAll(){
+    renderHeader();
+    renderBenefitTable();
+    renderPickers();
+    renderMatrix();
+    renderCharts();
+    renderResult();
+    saveStored();
+  }
+
+  // ---- Input wiring ----
+  const birthInput = document.getElementById('birthInput');
+  const asOfInput = document.getElementById('asOfInput');
+  const inflationSelect = document.getElementById('inflation');
+  const resetBtn = document.getElementById('resetBtn');
+
+  function syncInputsFromState(){
+    birthInput.value = fmtISO(BIRTH);
+    asOfInput.value = fmtISO(TODAY);
+  }
+
+  birthInput.addEventListener('change', ()=>{
+    if (!birthInput.value) return;
+    BIRTH = parseISO(birthInput.value);
+    renderAll();
+  });
+  asOfInput.addEventListener('change', ()=>{
+    if (!asOfInput.value) return;
+    TODAY = parseISO(asOfInput.value);
+    renderAll();
+  });
+  inflationSelect.addEventListener('change', ()=>{
+    currentInflation = Number(inflationSelect.value);
+    renderAll();
+  });
+  resetBtn.addEventListener('click', ()=>{
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+    initState();
+    renderInflationOptions();
+    syncInputsFromState();
+    renderAll();
+  });
+
+  // ---- Initial render ----
+  renderInflationOptions();
+  syncInputsFromState();
+  renderAll();
+  window.addEventListener('resize', renderCharts);
+</script>
+</body>
+</html>
