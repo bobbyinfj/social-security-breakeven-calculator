@@ -198,6 +198,11 @@
     cursor:pointer;
   }
   button:hover{color:var(--ink);border-color:var(--ink-dim);}
+  .removeAgeBtn{
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    padding:0.1rem 0.5rem;
+    line-height:1.2;
+  }
 
   .result{
     display:flex;
@@ -370,11 +375,18 @@
     </div>
     <div class="tablewrap">
       <table id="benefitTable">
-        <thead><tr><th>Claim age</th><th>Claim date</th><th>Monthly benefit</th><th>Annual benefit</th></tr></thead>
+        <thead><tr><th>Claim age</th><th>Claim date</th><th>Monthly benefit</th><th>Annual benefit</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
-    <p class="sub" style="margin-top:0.7rem;font-size:0.8rem;">Edit the monthly benefit for any claim age to match your own Social Security estimate (see your <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener">my Social Security</a> statement). Values are saved in your browser only &mdash; nothing is sent anywhere.</p>
+    <div class="picker" style="margin-top:0.9rem;margin-bottom:0;">
+      <div class="field">
+        <label for="addAgeInput">Add claim age</label>
+        <input type="number" id="addAgeInput" min="0" step="0.01" placeholder="e.g. 63.5" style="width:8rem;">
+      </div>
+      <button id="addAgeBtn" type="button">Add age</button>
+    </div>
+    <p class="sub" style="margin-top:0.7rem;font-size:0.8rem;">Edit the monthly benefit for any claim age to match your own Social Security estimate (see your <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener">my Social Security</a> statement). Add or remove ages with the controls above/below the table. Values are saved in your browser only &mdash; nothing is sent anywhere.</p>
   </section>
 
   <section>
@@ -458,7 +470,7 @@
   // lives solely in a local, gitignored config.js and never gets committed.
   const BUILTIN_DEFAULTS = {
     birthDate: "1960-01-01",
-    benefits: { 62:1400, 64:1600, 66:1900, 67:2000, 68:2160, 70:2480 },
+    benefits: { 62:1400, 63:1500, 64:1600, 65:1733, 66:1900, 67:2000, 68:2160, 69:2320, 70:2480 },
     inflationOptions: [0, 0.02, 0.025, 0.03, 0.04],
     inflationDefault: 0.025,
   };
@@ -534,7 +546,8 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${age}</td><td>${fmtDate(claimDate(age))}</td>`+
         `<td><input type="number" min="0" step="1" class="benefitInput" data-age="${age}" value="${BENEFITS[age]}"></td>`+
-        `<td>${fmtMoney(BENEFITS[age]*12)}</td>`;
+        `<td>${fmtMoney(BENEFITS[age]*12)}</td>`+
+        `<td><button type="button" class="removeAgeBtn" data-age="${age}" title="Remove this claim age" aria-label="Remove claim age ${age}">&times;</button></td>`;
       tbody.appendChild(tr);
     });
     tbody.querySelectorAll('.benefitInput').forEach(inp=>{
@@ -550,6 +563,66 @@
         renderDependents();
       });
     });
+    tbody.querySelectorAll('.removeAgeBtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const age = Number(btn.dataset.age);
+        removeAge(age);
+      });
+    });
+  }
+
+  // Full retirement age per SSA rules, by birth year (birth-month nuance ignored —
+  // consistent with this tool's other rough, month-agnostic assumptions).
+  function fullRetirementAge(birthYear){
+    if (birthYear <= 1937) return 65;
+    if (birthYear <= 1942) return 65 + (birthYear-1937)*2/12;
+    if (birthYear <= 1954) return 66;
+    if (birthYear <= 1959) return 66 + (birthYear-1954)*2/12;
+    return 67;
+  }
+  // SSA's actual early-claim reduction / delayed-retirement-credit multiplier,
+  // relative to the full-retirement-age benefit (PIA): -5/9 of 1% per month for the
+  // first 36 months before FRA, -5/12 of 1%/mo beyond that; +2/3 of 1% per month
+  // after FRA (credits stop accruing at 70).
+  function ssaFactor(age, fra){
+    const cappedAge = Math.min(age, 70);
+    const monthsDiff = Math.round((cappedAge - fra)*12);
+    if (monthsDiff < 0){
+      const earlyMonths = -monthsDiff;
+      const first36 = Math.min(earlyMonths, 36);
+      const extra = Math.max(earlyMonths-36, 0);
+      return 1 - (first36*5/9 + extra*5/12)/100;
+    } else if (monthsDiff > 0){
+      return 1 + (monthsDiff*2/3)/100;
+    }
+    return 1;
+  }
+  // Estimate a plausible monthly benefit for a not-yet-entered claim age using the
+  // actual SSA reduction/credit formula (not interpolation): back out the
+  // full-retirement-age benefit (PIA) from whichever existing entry is closest to
+  // FRA, then reapply the formula at the new age.
+  function estimateBenefit(age){
+    if (AGES.length === 0) return 0;
+    const fra = fullRetirementAge(BIRTH.getFullYear());
+    const refAge = AGES.reduce((best,a)=> Math.abs(a-fra) < Math.abs(best-fra) ? a : best, AGES[0]);
+    const pia = BENEFITS[refAge] / ssaFactor(refAge, fra);
+    return Math.round(pia * ssaFactor(age, fra));
+  }
+
+  function addAge(age, monthlyBenefit){
+    if (!Number.isFinite(age) || age <= 0) return;
+    if (Object.prototype.hasOwnProperty.call(BENEFITS, age)) return;
+    if (monthlyBenefit === undefined) monthlyBenefit = estimateBenefit(age);
+    BENEFITS[age] = monthlyBenefit;
+    AGES = Object.keys(BENEFITS).map(Number).sort((a,b)=>a-b);
+    renderAll();
+  }
+
+  function removeAge(age){
+    if (AGES.length <= 2) return; // keep at least two ages so comparisons still work
+    delete BENEFITS[age];
+    AGES = Object.keys(BENEFITS).map(Number).sort((a,b)=>a-b);
+    renderAll();
   }
 
   // Re-renders everything that depends on BENEFITS/BIRTH/TODAY/inflation except the
@@ -888,6 +961,8 @@
   const asOfInput = document.getElementById('asOfInput');
   const inflationSelect = document.getElementById('inflation');
   const resetBtn = document.getElementById('resetBtn');
+  const addAgeInput = document.getElementById('addAgeInput');
+  const addAgeBtn = document.getElementById('addAgeBtn');
 
   function syncInputsFromState(){
     birthInput.value = fmtISO(BIRTH);
@@ -907,6 +982,14 @@
   inflationSelect.addEventListener('change', ()=>{
     currentInflation = Number(inflationSelect.value);
     renderAll();
+  });
+  addAgeBtn.addEventListener('click', ()=>{
+    const age = Number(addAgeInput.value);
+    addAge(age);
+    addAgeInput.value = '';
+  });
+  addAgeInput.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter'){ e.preventDefault(); addAgeBtn.click(); }
   });
   resetBtn.addEventListener('click', ()=>{
     try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
